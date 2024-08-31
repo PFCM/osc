@@ -5,21 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"net"
-	"sync"
 	"time"
 )
-
-// buffers is a pool of pointers to byte slices.
-var buffers = sync.Pool{
-	New: func() any {
-		// Largest UDP packet, ~65k per goroutine that calls Get is
-		// probably tolerable.
-		b := make([]byte, 65507)
-		// Pointers to avoid an alloc in the interface conversions.
-		return &b
-	},
-}
 
 // Message represents an OSC message.
 type Message struct {
@@ -29,27 +16,11 @@ type Message struct {
 	Arguments []Argument
 }
 
-// ReadMessage the message from the next message received on the PacketConn;
-// typically a UDP connection.
-func ReadMessage(pc net.PacketConn) (*Message, error) {
-	b := *(buffers.Get().(*[]byte))
-	defer buffers.Put(&b)
-	// use a copy of the slice header, so b doesn't walk off the end of its
-	// array while parsing, and then be too small for the next message.
-	buf := b[:cap(b)]
-	// We don't know how many bytes the message is, but our buffer
-	// is at least 1k, which should be plenty.
-	n, _, err := pc.ReadFrom(buf)
-	if err != nil {
-		return nil, fmt.Errorf("reading packet: %w", err)
-	}
-	if n == len(b) {
-		return nil, fmt.Errorf("packet too big (>%d), unimplemented :( (cap %d)", n, cap(buf))
-	}
-	buf = buf[:n]
+// ParseMessage parses a message.
+func ParseMessage(buf []byte) (*Message, error) {
 	// A message begins with the address, which is a string.
 	var addr String
-	buf, err = addr.Consume(buf)
+	buf, err := addr.Consume(buf)
 	if err != nil {
 		return nil, fmt.Errorf("reading address pattern: %w", err)
 	}

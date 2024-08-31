@@ -44,7 +44,6 @@ func TestPatternMatch(t *testing.T) {
 		return s
 	}
 	allSingles := allChars(func(r rune) string { return string(r) })
-	// avoid some boilerplate
 	slice := func(ss ...string) []string { return ss }
 	for _, c := range []struct {
 		pattern Pattern
@@ -217,6 +216,7 @@ func TestParseCharClass(t *testing.T) {
 	for _, c := range []struct {
 		in   string
 		want charClass
+		rem  string
 		err  bool
 	}{{
 		in:   "[a]",
@@ -263,9 +263,17 @@ func TestParseCharClass(t *testing.T) {
 	}, {
 		in:  "abc]",
 		err: true,
+	}, {
+		in:   "[a]bc",
+		want: cc("a"),
+		rem:  "bc",
+	}, {
+		in:   "[!a][b]",
+		want: not(cc("a")),
+		rem:  "[b]",
 	}} {
 		t.Run(c.in, func(t *testing.T) {
-			got, _, err := parseCharClass(c.in)
+			got, rem, err := parseCharClass(c.in)
 			if err != nil {
 				if !c.err {
 					t.Fatalf("parseCharClass(%q): %v", c.in, err)
@@ -278,7 +286,9 @@ func TestParseCharClass(t *testing.T) {
 			if got != c.want {
 				t.Errorf("parseCharClass(%q) = %v, want: %v", c.in, got, c.want)
 			}
-			// TODO: test with something at the end
+			if rem != c.rem {
+				t.Errorf("parseCharClass(%q): remainder %q, want %q", c.in, rem, c.rem)
+			}
 		})
 	}
 }

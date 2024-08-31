@@ -3,10 +3,8 @@ package osc
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
 	"math"
 	"math/rand"
-	"net"
 	"reflect"
 	"strings"
 	"testing"
@@ -82,10 +80,9 @@ func TestMessageRoundtrip(t *testing.T) {
 
 	for _, msg := range msgs {
 		enc := msg.Append(nil)
-		pc := &conn{msg: enc}
-		got, err := ReadMessage(pc)
+		got, err := ParseMessage(enc)
 		if err != nil {
-			t.Errorf("ReadMessage: %v\n(%v)", err, msg)
+			t.Errorf("ParseMessage: %v\n(%v)", err, msg)
 			continue
 		}
 		gotEnc := got.Append(nil)
@@ -119,26 +116,6 @@ func TestMessageRoundtrip(t *testing.T) {
 			t.Errorf("Unstable encoding:\n first: %q\nsecond: %q", enc, gotEnc)
 		}
 	}
-}
-
-// conn implements net.PacketConn, although only the ReadFrom method.
-type conn struct {
-	net.PacketConn
-	msg []byte
-}
-
-func (c *conn) ReadFrom(b []byte) (int, net.Addr, error) {
-	if len(c.msg) == 0 {
-		// Our tests shouldn't be reading too much.
-		return 0, nil, io.ErrUnexpectedEOF
-	}
-	copy(b, c.msg)
-	n := len(c.msg)
-	if len(b) < len(c.msg) {
-		c.msg = c.msg[len(b):]
-		n = len(b)
-	}
-	return n, nil, nil
 }
 
 func TestInt32(t *testing.T) {

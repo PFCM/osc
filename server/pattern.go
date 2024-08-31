@@ -12,6 +12,22 @@ type Pattern struct {
 	matchers []matcher
 }
 
+// ParsePattern parses an address pattern, ready for matching.
+func ParsePattern(s string) (Pattern, error) {
+	var p Pattern
+	for s != "" {
+		m, rem, err := parseMatcher(s)
+		if err != nil {
+			return Pattern{}, err
+		}
+		p.matchers = append(p.matchers, m)
+		s = rem
+	}
+	return p, nil
+}
+
+// Match tries to match the provided string against the receiver
+// pattern.
 func (p Pattern) Match(s string) bool {
 	states := []*matchState{{p.matchers, s}}
 	for len(states) > 0 {
@@ -163,7 +179,7 @@ func (cc charClass) String() string {
 }
 
 func parseMatcher(s string) (matcher, string, error) {
-	if len(s) != 0 {
+	if len(s) == 0 {
 		return nil, "", errors.New("unexpected end of input")
 	}
 	switch s[0] {
