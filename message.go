@@ -74,8 +74,30 @@ func (m Message) Append(b []byte) []byte {
 	return b
 }
 
-// newByTypeTag holds functions to construct new functions fomr a given typetag.
-// TODO: there's probably others.
+// TypeTag returns the message's type tag.
+func (m Message) TypeTag() string {
+	tags := make([]rune, len(m.Arguments))
+	for i, a := range m.Arguments {
+		tags[i] = a.TypeTag()
+	}
+	return string(tags)
+}
+
+// CheckTypes takes a type tag string and compares it to the types of the receiver's
+// arguments. Returns nil if they match and an appropriate error otherwise.
+func (m Message) CheckTypes(tt string) error {
+	if aLen, tLen := len(m.Arguments), len(tt); aLen != tLen {
+		return fmt.Errorf("wrong number of arguments: %d, expect %d", aLen, tLen)
+	}
+	for i, t := range tt {
+		if at := m.Arguments[i].TypeTag(); at != t {
+			return fmt.Errorf("unexpected argument type at position %d: %q != %q", i, m.TypeTag(), tt)
+		}
+	}
+	return nil
+}
+
+// newByTypeTag holds functions to construct new arguments from a given typetag.
 var newByTypeTag = map[rune]func() Argument{
 	Int32(0).TypeTag():   func() Argument { return new(Int32) },
 	Float32(0).TypeTag(): func() Argument { return new(Float32) },
